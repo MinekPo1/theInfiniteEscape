@@ -15,14 +15,15 @@ ALLOW_FRAME_ADVANCE = True
 # allow the usage of frame advance
 # hint: ' and / are used for frame advance
 pygame.font.init()
-font = pygame.font.SysFont('Arial', 20)
+font = pygame.font.Font('MainMenu/font.ttf', 20)
 
 COLOR1 = (200, 168, 90)
 
 
 class Level:
-	def __init__(self, path, surface):
-
+	def __init__(
+		self, path: str | Path | None, surface: pygame.Surface | pygame.surface.Surface
+	):
 		# level setup
 		self.display_surface = surface
 		self.setup_level(path)
@@ -41,12 +42,22 @@ class Level:
 		jump_particle_sprite = ParticleEffect(pos, 'jump')
 		self.dust_sprite.add(jump_particle_sprite)
 
-	def setup_level(self, path: Path | str):
+	def setup_level(self, path: Path | str | None):
+		if path is None:
+			self.setup_empty()
+			return
+
 		if isinstance(path, str):
 			path = Path(path)
 
-		self.tiles = pygame.sprite.Group()
-		self.player = pygame.sprite.GroupSingle()
+		if hasattr(self, 'tiles'):
+			self.tiles.empty()  # type:ignore
+		else:
+			self.tiles = pygame.sprite.Group()
+		if hasattr(self, 'player'):
+			self.player.empty()  # type:ignore
+		else:
+			self.player = pygame.sprite.GroupSingle()
 
 		f: IO[bytes]
 
@@ -115,7 +126,8 @@ class Level:
 							(
 								TILE_SIZE*tiles[tile_id]['width'],
 								TILE_SIZE*tiles[tile_id]['height']
-							)
+							),
+							tile_id
 						)
 					)
 				elif el_type == 2:
@@ -128,6 +140,8 @@ class Level:
 						self.create_jump_particles
 					))
 
+				else:
+					print("Unknown element type:", el_type)
 		"""
 		for row_index,row in enumerate(layout):
 			for col_index,cell in enumerate(row):
@@ -141,6 +155,17 @@ class Level:
 					player_sprite = Player((x,y),self.display_surface,self.create_jump_particles)
 					self.player.add(player_sprite)
 		"""
+
+	def setup_empty(self):
+		if hasattr(self, 'tiles'):
+			self.tiles.empty()
+		else:
+			self.tiles = pygame.sprite.Group()
+		if hasattr(self, 'player'):
+			self.player.empty()
+		else:
+			self.player = pygame.sprite.GroupSingle()
+		self.player.add(Player((0,0),self.display_surface,self.create_jump_particles))
 
 	def scroll_x(self):
 		player: Player = self.player.sprite  # type:ignore
@@ -169,6 +194,8 @@ class Level:
 		self.player.update(self)
 		self.player.draw(self.display_surface)
 
+		self.current_x += self.world_shift
+
 		self.scroll_x()
 
 		if ALLOW_FRAME_ADVANCE and pygame.key.get_pressed()[pygame.K_QUOTE]:
@@ -186,3 +213,8 @@ class Level:
 			while not(pygame.key.get_pressed()[pygame.K_QUOTE]) \
 					and not(pygame.key.get_pressed()[pygame.K_SLASH]):
 				pygame.event.pump()
+
+	def draw(self):
+		self.dust_sprite.draw(self.display_surface)
+		self.tiles.draw(self.display_surface)
+		self.player.draw(self.display_surface)

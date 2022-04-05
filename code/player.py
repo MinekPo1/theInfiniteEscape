@@ -111,18 +111,6 @@ class Player(pygame.sprite.Sprite):
 				self.display_surface.blit(flipped_dust_particle, pos)
 
 	def get_input(self, level: 'Level'):
-		keys = pygame.key.get_pressed()
-
-		if keys[pygame.K_RIGHT]:
-			self.direction.x = 8
-			self.facing_right = True
-		elif keys[pygame.K_LEFT]:
-			self.direction.x = -8
-			self.facing_right = False
-
-		self.direction.x *= 0.8
-		if abs(self.direction.x) < 1:
-			self.direction.x = 0
 
 		self.direction.y += self.gravity
 
@@ -148,8 +136,8 @@ class Player(pygame.sprite.Sprite):
 		if new_rect.collidelist(
 			[i.rect for i in level.tiles if i.rect is not None]
 		) != -1:
-			self.direction.y = max(pdy+1, -6) if self.direction.y < 0 else 0
-			# self.direction.y = 0  # no sticking
+			# self.direction.y = max(pdy+1, -6) if self.direction.y < 0 else 0
+			self.direction.y = 0  # no sticking
 			"""
 				to make hitting some jumps easier
 				make the player stick to the ceiling a bit
@@ -162,6 +150,9 @@ class Player(pygame.sprite.Sprite):
 				|XX
 
 				without sticking this jump is pixel perfect
+
+				Edit: tested it, and it doesn't do shit
+				reverted to no strickting
 			"""
 			new_rect.y = self.rect.y
 
@@ -179,12 +170,40 @@ class Player(pygame.sprite.Sprite):
 			self.direction.x = 0
 			new_rect.x = self.rect.x
 
-
 		self.rect = new_rect.copy()  # type:ignore
 		new_rect.y += 1
 		self.on_ground = new_rect.collidelist(
 			[i.rect for i in level.tiles if i.rect is not None]
 		) != -1
+
+		keys = pygame.key.get_pressed()
+
+		if keys[pygame.K_RIGHT]:
+			self.direction.x += 2 if self.on_ground else 1.2
+			self.facing_right = True
+		elif keys[pygame.K_LEFT]:
+			self.direction.x -= 2 if self.on_ground else 1.2
+			self.facing_right = False
+
+		self.direction.x *= 0.8 + 0.05 * (not self.on_ground)
+		if abs(self.direction.x) < 0.5:
+			self.direction.x = 0
+
+		"""
+			lets solve the equations to get the top speeds:
+
+			on the ground:
+				(x + 2) * 0.8 = x
+				x * 0.8 + 1.6 = x
+				1.6 = x * 0.2
+				8 = x
+
+			in the air:
+				(x + 1.2) * 0.85 = x
+				x * 0.85 + 1.02 = x
+				0.85 = x * 0.15
+				6.8 = x
+		"""
 
 		if keys[pygame.K_UP] and self.on_ground:
 			self.direction.y = self.jump_speed

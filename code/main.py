@@ -1,3 +1,4 @@
+import contextlib
 import pygame
 import sys
 from settings import *
@@ -14,14 +15,13 @@ level = Level(r"../maps/test.tiemap.txt", SCREEN)
 
 pygame.display.set_caption("MENU")
 
-
-# mixer.init()
-# mixer.music.load(r'..\sound&music\music\music1.wav')
-# mixer.music.play(-1)
-# mixer.music.set_volume(0.7)
+with contextlib.suppress(Exception):
+	mixer.init()
+	mixer.music.load(r'..\sound&music\music\music1.wav')
+	mixer.music.play(-1)
+	mixer.music.set_volume(0.7)
 
 COLOR1 = (200, 168, 90)
-
 
 BG = pygame.image.load('MainMenu/MainMenuBackgrond.png')
 
@@ -31,23 +31,53 @@ def get_font(size):  # Returns Press-Start-2P in the desired size
 
 
 def play():
+	paused = False
+	pause_buttons = [
+		Button((SCREEN_WIDTH//2, SCREEN_HEIGHT//2 - 48), "--PAUSED--", get_font(32)),
+		Button((SCREEN_WIDTH//2, SCREEN_HEIGHT//2),      "RESUME",     get_font(32), True),
+		Button((SCREEN_WIDTH//2, SCREEN_HEIGHT//2 + 48), "QUIT",  get_font(32), True)
+	]
 	while True:
 		pygame.display.set_caption("GAME")
 
 		SCREEN.fill((0, 0, 0))
 
+		clicked = False
 		for event in pygame.event.get():
 			if event.type == pygame.QUIT:
 				pygame.quit()
 				sys.exit()
+			if event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE:
+				paused = not paused
+			if event.type == pygame.MOUSEBUTTONDOWN:
+				clicked = True
 
-		level.run()
+		if not paused:
+			level.run()
+		else:
+			level.draw()
+			sum_rect = pygame.Rect(SCREEN_WIDTH//2, SCREEN_HEIGHT//2, 0, 0)
+			for button in pause_buttons:
+				sum_rect = sum_rect.union(button.rect)
+			sum_rect.inflate_ip(32, 32)
+			pygame.draw.rect(SCREEN, (0, 0, 0), sum_rect)
+			pygame.draw.rect(SCREEN, COLOR1, sum_rect, 16)
+			for button in pause_buttons:
+				button.update(SCREEN)
+
+			m_pos = pygame.mouse.get_pos()
+
+			if clicked:
+				if pause_buttons[1].checkForInput(m_pos):
+					paused = False
+				elif pause_buttons[2].checkForInput(m_pos):
+					return
 
 		pygame.display.update()
 		clock.tick(60)
 
-def options():
 
+def credits():
 	credit_text = {
 		"@RiverBlak#7781": (375, 65),
 		"@Lady Yami#3939": (375, 115),
@@ -56,8 +86,7 @@ def options():
 		"by BigExplosionTeam": (375, 15)
 	}
 	OPTIONS_BACK = Button(
-		image=None, pos=(375, 300), text_input="BACK",
-		font=get_font(75), base_color=COLOR1, hovering_color=COLOR1
+		(375, 300), "BACK", get_font(75)
 	)
 	while True:
 		pygame.display.set_caption("OPTIONS")
@@ -74,7 +103,6 @@ def options():
 		# if OPTIONS_BACK:
 		# 	SCREEN.fill("black")
 
-		OPTIONS_BACK.changeColor(OPTIONS_MOUSE_POS)
 		OPTIONS_BACK.update(SCREEN)
 
 		for event in pygame.event.get():
@@ -90,20 +118,19 @@ def options():
 
 
 def main_menu():
-	COLOR1 = (200, 168, 90)
 	PLAY_BUTTON = Button(
-		image=pygame.image.load("MainMenu/Play Rect.png"), pos=(610, 50),
-		text_input="PLAY", font=get_font(32), base_color='black', hovering_color="black"
+		(610, 50),
+		"PLAY", get_font(32), True
 	)
 
 	OPTIONS_BUTTON = Button(
-		image=pygame.image.load("MainMenu/Options Rect.png"), pos=(610, 132),
-		text_input="CREDITS", font=get_font(32), base_color='black', hovering_color="black"
+		(610, 132),
+		"CREDITS", get_font(32), True
 	)
 
 	QUIT_BUTTON = Button(
-		image=pygame.image.load("MainMenu/Quit Rect.png"), pos=(610, 252),
-		text_input="QUIT", font=get_font(32), base_color='black', hovering_color="black"
+		(610, 252),
+		"QUIT", get_font(32), True
 	)
 
 	while True:
@@ -118,7 +145,6 @@ def main_menu():
 		# SCREEN.blit(MENU_TEXT, MENU_RECT)
 
 		for button in [PLAY_BUTTON, OPTIONS_BUTTON, QUIT_BUTTON]:
-			button.changeColor(MENU_MOUSE_POS)
 			button.update(SCREEN)
 
 		for event in pygame.event.get():
@@ -129,7 +155,7 @@ def main_menu():
 				if PLAY_BUTTON.checkForInput(MENU_MOUSE_POS):
 					play()
 				if OPTIONS_BUTTON.checkForInput(MENU_MOUSE_POS):
-					options()
+					credits()
 				if QUIT_BUTTON.checkForInput(MENU_MOUSE_POS):
 					pygame.quit()
 					sys.exit()
@@ -137,4 +163,5 @@ def main_menu():
 		pygame.display.update()
 
 
-main_menu()
+if __name__ == "__main__":
+	main_menu()
