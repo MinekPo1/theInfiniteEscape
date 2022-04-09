@@ -2,11 +2,15 @@
 
 This is a binary format for storing a map, stored as a series of elements.
 
+## .tiemap.txt
+
+same as .tiemap but in hex
+
 ## metadata header
 
 ### empty byte
 
-Allows using hexadecimal notation for file.
+Eases automatic detection of file format
 
 ### position size
 

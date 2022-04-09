@@ -22,7 +22,8 @@ COLOR1 = (200, 168, 90)
 
 class Level:
 	def __init__(
-		self, path: str | Path | None, surface: pygame.Surface | pygame.surface.Surface
+		self, path: str | Path | None, surface: pygame.Surface |
+		pygame.surface.Surface
 	):
 		# level setup
 		self.display_surface = surface
@@ -123,10 +124,6 @@ class Level:
 					y = read_num(p_size)
 					self.tiles.add(
 						Tile((0+x*TILE_SIZE, SCREEN_HEIGHT-(y+1)*TILE_SIZE),
-							(
-								TILE_SIZE*tiles[tile_id]['width'],
-								TILE_SIZE*tiles[tile_id]['height']
-							),
 							tile_id
 						)
 					)

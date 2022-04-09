@@ -30,17 +30,33 @@ def get_font(size):  # Returns Press-Start-2P in the desired size
 	return pygame.font.Font("MainMenu/font.ttf", size)
 
 
+bg_images = [pygame.image.load(f'../graphics/bg/paralax{i}.png').convert_alpha() for i in range(1, 3)]
+bg_width = bg_images[0].get_width()
+bg_overlay = pygame.image.load('../graphics/bg/paralax3.png')
+
+
+def draw_bg(scroll: float):
+	for j,i in enumerate(bg_images):
+		SCREEN.blit(i, (-scroll * (1.5-0.5*j), 0))
+		SCREEN.blit(i, (-scroll * (1.5-0.5*j) % bg_width, 0))
+
+
 def play():
 	paused = False
 	pause_buttons = [
 		Button((SCREEN_WIDTH//2, SCREEN_HEIGHT//2 - 48), "--PAUSED--", get_font(32)),
-		Button((SCREEN_WIDTH//2, SCREEN_HEIGHT//2),      "RESUME",     get_font(32), True),
+		Button(
+			(SCREEN_WIDTH//2, SCREEN_HEIGHT//2),"RESUME",get_font(32),
+			True
+		),
 		Button((SCREEN_WIDTH//2, SCREEN_HEIGHT//2 + 48), "QUIT",  get_font(32), True)
 	]
 	while True:
 		pygame.display.set_caption("GAME")
 
 		SCREEN.fill((0, 0, 0))
+		draw_bg(-level.current_x)
+		SCREEN.blit(bg_overlay, (0, 0))
 
 		clicked = False
 		for event in pygame.event.get():
