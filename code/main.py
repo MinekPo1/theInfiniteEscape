@@ -34,11 +34,21 @@ bg_images = [pygame.image.load(f'../graphics/bg/paralax{i}.png').convert_alpha()
 bg_width = bg_images[0].get_width()
 bg_overlay = pygame.image.load('../graphics/bg/paralax3.png')
 
+font = get_font(16)
+
+ALLOW_FRAME_ADVANCE = True
+# allow the usage of frame advance
+# hint: ' and / are used for frame advance
+
 
 def draw_bg(scroll: float):
 	for j,i in enumerate(bg_images):
 		SCREEN.blit(i, (-scroll * (1.5-0.5*j), 0))
-		SCREEN.blit(i, (-scroll * (1.5-0.5*j) % bg_width, 0))
+		if -scroll * (1.5-0.5*j) + bg_width > SCREEN_WIDTH:
+			SCREEN.blit(i, (-scroll * (1.5-0.5*j) - bg_width, 0))
+		elif -scroll * (1.5-0.5*j) < 0:
+			SCREEN.blit(i, (-scroll * (1.5-0.5*j) + bg_width, 0))
+	SCREEN.blit(bg_overlay, (0, 0))
 
 
 def play():
@@ -88,6 +98,22 @@ def play():
 					paused = False
 				elif pause_buttons[2].checkForInput(m_pos):
 					return
+
+		if ALLOW_FRAME_ADVANCE and pygame.key.get_pressed()[pygame.K_QUOTE]:
+			# display some debug info
+			player: Player = level.player.sprite  # type:ignore
+			SCREEN.blit(font.render(
+					f"{player.rect.center} {player.direction}",
+					True, COLOR1
+				), (0, 0)
+			)
+			pygame.draw.rect(SCREEN, COLOR1, player.rect, 1)
+			pygame.display.update()
+			while pygame.key.get_pressed()[pygame.K_QUOTE]:
+				pygame.event.pump()
+			while not(pygame.key.get_pressed()[pygame.K_QUOTE]) \
+					and not(pygame.key.get_pressed()[pygame.K_SLASH]):
+				pygame.event.pump()
 
 		pygame.display.update()
 		clock.tick(60)
@@ -177,6 +203,7 @@ def main_menu():
 					sys.exit()
 
 		pygame.display.update()
+		clock.tick(60)
 
 
 if __name__ == "__main__":
