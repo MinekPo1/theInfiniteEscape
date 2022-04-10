@@ -11,9 +11,6 @@ with (Path(__file__).parent.parent / "tiles.yml").open() as f:
 	tiles = yaml.safe_load(f)
 
 
-ALLOW_FRAME_ADVANCE = True
-# allow the usage of frame advance
-# hint: ' and / are used for frame advance
 pygame.font.init()
 font = pygame.font.Font('MainMenu/font.ttf', 20)
 
@@ -194,22 +191,6 @@ class Level:
 		self.current_x += self.world_shift
 
 		self.scroll_x()
-
-		if ALLOW_FRAME_ADVANCE and pygame.key.get_pressed()[pygame.K_QUOTE]:
-			# display some debug info
-			player: Player = self.player.sprite  # type:ignore
-			self.display_surface.blit(font.render(
-					f"{player.rect.center} {player.direction}",
-					True, COLOR1
-				), (0, 0)
-			)
-			pygame.draw.rect(self.display_surface, COLOR1, player.rect, 1)
-			pygame.display.update()
-			while pygame.key.get_pressed()[pygame.K_QUOTE]:
-				pygame.event.pump()
-			while not(pygame.key.get_pressed()[pygame.K_QUOTE]) \
-					and not(pygame.key.get_pressed()[pygame.K_SLASH]):
-				pygame.event.pump()
 
 	def draw(self):
 		self.dust_sprite.draw(self.display_surface)

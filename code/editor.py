@@ -483,7 +483,7 @@ if __name__ == "__main__":
 						pos[0] = pos[0] - (pos[0]) % TILE_SIZE
 						pos[1] = pos[1] - (pos[1]) % TILE_SIZE
 
-						level.tiles.add(Tile(pos,(TILE_SIZE,TILE_SIZE),0))
+						level.tiles.add(Tile(pos,0))
 			if do_click and pygame.mouse.get_pressed()[2] and keys[pygame.K_DELETE]:
 				for tile in level.tiles:
 					rect = tile.rect  # type:ignore

@@ -28,6 +28,7 @@ def load_sprite(spec: str,size: tuple[int,int]) -> pygame.surface.Surface:
 			sprite_cache[spec] = sprite
 		o = pygame.surface.Surface(size)
 		o.blit(sprite, (0, 0), (index * size[0], 0, size[0], size[1]))
+		spec = f"{spec}:{index}"
 	else:
 		o = pygame.image.load(
 			(tile_sprite_folder / f'{spec}.png').open("rb")
