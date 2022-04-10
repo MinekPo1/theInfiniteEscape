@@ -5,6 +5,7 @@ from settings import *
 from level import Level
 from pygame import mixer
 from button import Button
+from pyvidplayer import Video
 
 # Pygame setup
 pygame.init()
@@ -25,6 +26,8 @@ COLOR1 = (200, 168, 90)
 
 BG = pygame.image.load('MainMenu/MainMenuBackgrond.png')
 
+vid = Video('intro.mp4')
+vid.set_size((SCREEN_WIDTH, SCREEN_HEIGHT))
 
 def get_font(size):  # Returns Press-Start-2P in the desired size
 	return pygame.font.Font("MainMenu/font.ttf", size)
@@ -39,7 +42,14 @@ font = get_font(16)
 ALLOW_FRAME_ADVANCE = True
 # allow the usage of frame advance
 # hint: ' and / are used for frame advance
-
+def intro():
+	while True:
+		vid.draw(SCREEN, (0, 0))
+		pygame.display.update()
+		for event in pygame.event.get():
+			if event.type == pygame.MOUSEBUTTONDOWN:
+				vid.close()
+				main_menu()
 
 def draw_bg(scroll: float):
 	for j,i in enumerate(bg_images):
@@ -207,4 +217,4 @@ def main_menu():
 
 
 if __name__ == "__main__":
-	main_menu()
+	intro()
