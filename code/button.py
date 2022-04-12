@@ -66,6 +66,7 @@ class OButton:
 	x: int
 	y: int
 	text: str
+	__text: str
 	font: pygame.font.Font = font
 	invert: bool = False
 	padding: int = 8
@@ -80,10 +81,20 @@ class OButton:
 			for i in ["text", "x", "y"]:
 				if not hasattr(cls, i):
 					raise TypeError(f"{cls.__name__} must define {i}")
+			cls.__text = cls.text
+			cls.text = property(lambda self: self.__text)  # type:ignore
+
+			@cls.text.setter  # type:ignore
+			def _(_,__):
+				raise AttributeError("Cannot set text, use update_text instead")
 
 	def __init__(self):
+		self.update_text(self.text)
+
+	def update_text(self, text: str):
+		self.__text = text
 		self.text_img = self.font.render(
-			self.text, True, (0,0,0) if self.invert else COLOR1
+			text, True, (0,0,0) if self.invert else COLOR1
 		)
 		self.rect = self.text_img.get_rect()
 		if self.width is not None:
@@ -107,6 +118,7 @@ class OButton:
 		elif self.anchor[1] == "c":
 			self.rect.centerx = self.x
 		self.text_rect = self.text_img.get_rect(center=self.rect.center)
+
 
 	def on_click(self):
 		pass
@@ -220,6 +232,11 @@ class OMenu(OButton, final=False):
 		]
 		for i in self.items:
 			i.parent = self  # type:ignore
+		# allow for using the class name to address the item
+		self.__dict__.update({
+			i.__class__.__name__: i for i in self.items
+		})
+		self.open = False
 
 		self.open = False
 

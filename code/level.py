@@ -11,6 +11,8 @@ with (Path(__file__).parent.parent / "tiles.yml").open() as f:
 	tiles = yaml.safe_load(f)
 
 
+map_dir = Path(__file__).parent.parent / "maps"
+
 pygame.font.init()
 font = pygame.font.Font('MainMenu/font.ttf', 20)
 
@@ -19,14 +21,14 @@ COLOR1 = (200, 168, 90)
 
 class Level:
 	def __init__(
-		self, path: str | Path | None, surface: pygame.Surface |
-		pygame.surface.Surface
+		self, path: str | Path | None, surface: pygame.Surface
+		| pygame.surface.Surface
 	):
 		# level setup
 		self.display_surface = surface
+		self.level_transitions: dict[tuple[int,int,int,int],str] = {}
+		self.death_zones: list[pygame.Rect] = []
 		self.setup_level(path)
-		self.world_shift = 0
-		self.current_x = 0
 
 		# dust
 		self.dust_sprite = pygame.sprite.GroupSingle()
@@ -56,6 +58,12 @@ class Level:
 			self.player.empty()  # type:ignore
 		else:
 			self.player = pygame.sprite.GroupSingle()
+		if self.level_transitions:
+			self.level_transitions.clear()
+		if self.death_zones:
+			self.death_zones.clear()
+		self.world_shift = 0
+		self.current_x = 0
 
 		f: IO[bytes]
 
@@ -133,6 +141,24 @@ class Level:
 						self.display_surface,
 						self.create_jump_particles
 					))
+				elif el_type == 3:
+					# level transition
+					x = read_num(p_size) * TILE_SIZE
+					y = SCREEN_HEIGHT - read_num(p_size) * TILE_SIZE
+					w = read_num(p_size) * TILE_SIZE
+					h = read_num(p_size) * TILE_SIZE
+					name_len = read_num(1)
+					name = read(name_len).decode("ascii")
+					rect = (x, y, w, h)
+					self.level_transitions[rect] = name
+				elif el_type == 4:
+					# death zone
+					a,b,c,d = [read_num(p_size) for _ in range(4)]
+					x = a * TILE_SIZE
+					y = SCREEN_HEIGHT - b * TILE_SIZE
+					w = c * TILE_SIZE
+					h = d * TILE_SIZE
+					self.death_zones.append(pygame.Rect(x, y, w, h))
 
 				else:
 					print("Unknown element type:", el_type)
@@ -149,6 +175,7 @@ class Level:
 					player_sprite = Player((x,y),self.display_surface,self.create_jump_particles)
 					self.player.add(player_sprite)
 		"""
+		self.savestate()
 
 	def setup_empty(self):
 		if hasattr(self, 'tiles'):
@@ -160,6 +187,9 @@ class Level:
 		else:
 			self.player = pygame.sprite.GroupSingle()
 		self.player.add(Player((0,0),self.display_surface,self.create_jump_particles))
+		self.world_shift = 0
+		self.current_x = 0
+		self.savestate()
 
 	def scroll_x(self):
 		player: Player = self.player.sprite  # type:ignore
@@ -175,6 +205,22 @@ class Level:
 			self.world_shift = 0
 			player.speed = 1
 
+	def savestate(self):
+		self.__current_x = self.current_x
+		self.__level_transitions = self.level_transitions
+		self.__death_zones = self.death_zones
+		self.__player_rect = self.player.sprite.rect
+		self.__tiles = self.tiles
+
+	def reset(self):
+		self.tiles.update(-self.current_x)
+		self.current_x = self.__current_x
+		self.tiles.update(self.current_x)
+		self.level_transitions = self.__level_transitions
+		self.death_zones = self.__death_zones
+		self.player.sprite.rect = self.__player_rect
+		self.tiles = self.__tiles
+
 	def run(self):
 		# dust particles
 		self.dust_sprite.update(self.world_shift)
@@ -188,9 +234,28 @@ class Level:
 		self.player.update(self)
 		self.player.draw(self.display_surface)
 
+		for i in self.level_transitions:
+			i2 = pygame.Rect(i[0] + self.current_x, i[1], i[2], i[3])
+			pygame.draw.rect(self.display_surface, (255, 255, 255), i2, 1)
+		for i in self.death_zones:
+			i2 = pygame.Rect(i[0] + self.current_x, i[1], i[2], i[3])
+			pygame.draw.rect(self.display_surface, (255, 0, 0), i2, 1)
+
 		self.current_x += self.world_shift
 
 		self.scroll_x()
+
+		r = self.player.sprite.rect
+		if r is not None:
+			# create an absolute rect
+			r2 = pygame.Rect(r.x - self.current_x, r.y, r.w, r.h)
+			# check if player is in death zone
+			if r2.collidelist(self.death_zones) != -1:
+				self.reset()
+			# check for level transitions
+			a = r2.collidedict(self.level_transitions)  # type:ignore wtf pygame why is rect not _RectStyle
+			if a is not None:
+				self.setup_level(map_dir / a[1])
 
 	def draw(self):
 		self.dust_sprite.draw(self.display_surface)

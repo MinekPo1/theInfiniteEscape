@@ -3,7 +3,7 @@ from tiles import Tile
 from settings import SCREEN_HEIGHT, SCREEN_WIDTH
 from settings import TILE_SIZE
 from level import Level
-from typing import Any, Callable, cast
+from typing import Any, Callable, cast, overload
 import pygame
 from pathlib import Path
 import string
@@ -195,6 +195,28 @@ class EditorFileMenu(OMenu):
 	y = 0
 
 
+class TestMenu(OMenu):
+
+	class FlyToggleButton(OButton):
+		parent: 'TestMenu'
+		x = 0
+		y = 0
+		text = " [f]ly "
+		index = 0
+		invert = True
+		active = False
+
+		def on_click(self):
+			self.active = not self.active
+			self.update_text("X[f]ly " if self.active else " [f]ly ")
+
+	x = 0
+	y = 0
+	text = "  test  "
+	anchor = 'tl'  # type:ignore
+	invert = True
+
+
 class FakePygame:
 	class ModuleProxy:
 		path: tuple[str,...]
@@ -224,7 +246,19 @@ class FakePygame:
 	def __init__(self, overrides: dict[tuple[str,...], Any] | None = None):
 		self.overrides = {} if overrides is None else overrides
 
-	def dec(self,*path: str) -> Callable[[Callable], Callable]:
+	@overload
+	def override(self,*path: str) -> Callable[[Callable], Callable]:
+		...
+
+	@overload
+	def override(self,*path: str, v:Any) -> Any:
+		...
+
+	def override(self,*path: str, v:Any = None) -> Any:
+		if v is not None:
+			self.overrides[path] = v
+			return v
+
 		def decorator(func: Callable):
 			self.overrides[path] = func
 			return func
@@ -243,6 +277,7 @@ class FakePygame:
 
 if __name__ == "__main__":
 	file_menu = EditorFileMenu()
+	test_menu = TestMenu()
 
 	inner_game_screen = pygame.Surface((SCREEN_WIDTH, SCREEN_HEIGHT))
 	inner_game_screen.fill((255,0,0))
@@ -350,6 +385,24 @@ if __name__ == "__main__":
 				write_int(x, scale)
 				write_int(y, scale)
 
+			# write level transitions
+			for data, name in level.level_transitions.items():
+				write(b'\x03')
+				write_int(data[0]//TILE_SIZE, scale)
+				write_int(-(data[1] - SCREEN_HEIGHT) // TILE_SIZE , scale)
+				write_int(data[2]//TILE_SIZE, scale)
+				write_int(data[3]//TILE_SIZE, scale)
+				write_int(len(name), 1)
+				write(name.encode())
+
+			# write death zones
+			for zone in level.death_zones:
+				write(b'\x04')
+				write_int((zone[0])//TILE_SIZE, scale)
+				write_int(-(zone[1] - SCREEN_HEIGHT) // TILE_SIZE , scale)
+				write_int(zone[2]//TILE_SIZE, scale)
+				write_int(zone[3]//TILE_SIZE, scale)
+
 			# write a smiley face
 			if format == "hex":
 				# we can just print a smiley face,
@@ -379,10 +432,33 @@ if __name__ == "__main__":
 		main.play()
 		file_menu.open = False
 
-	@fake_pygame.dec("display", "update")
+	@fake_pygame.override("display", "update")
 	def update_inner_game_screen():
-		win.blit(main.SCREEN, (0,20))
+		win.blit(main.SCREEN, (0,test_menu.text_rect.bottom))
+		pygame.draw.rect(win, COLOR1, (0,0,SCREEN_WIDTH,test_menu.text_rect.bottom), 0)
+		test_menu.update(win)
+		if test_menu.FlyToggleButton.active:
+			p: Player = main.level.player.sprite  # type:ignore
+			p.direction.x = 0
+			p.direction.y = 0
+			keys = pygame.key.get_pressed()
+			if keys[pygame.K_UP]:
+				p.rect.y -= 8
+			if keys[pygame.K_DOWN]:
+				p.rect.y += 8
+			if keys[pygame.K_LEFT]:
+				p.rect.x -= 8
+			if keys[pygame.K_RIGHT]:
+				p.rect.x += 8
 		pygame.display.update()
+
+	@fake_pygame.override("event", "get")
+	def get_inner_game_screen_event():
+		events = pygame.event.get()
+		for event in events:
+			if event.type == pygame.KEYDOWN and event.key == pygame.K_f:
+				test_menu.FlyToggleButton.on_click()  # type:ignore
+		return events
 
 	open_map()
 
@@ -439,6 +515,13 @@ if __name__ == "__main__":
 
 		level.tiles.update(level.world_shift)
 		level.tiles.draw(win)
+
+		for zone in level.death_zones:
+			s = font.render("x", True, COLOR1)
+			for x in range(zone.left, zone.right, TILE_SIZE):
+				for y in range(zone.top, zone.bottom, TILE_SIZE):
+					win.blit(s, (x,y))
+
 		if level.player.sprite.image is not None \
 				and level.player.sprite.rect is not None:
 			rect = level.player.sprite.rect.copy()

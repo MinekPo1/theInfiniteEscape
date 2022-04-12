@@ -29,6 +29,7 @@ BG = pygame.image.load('MainMenu/MainMenuBackgrond.png')
 vid = Video('intro.mp4')
 vid.set_size((SCREEN_WIDTH, SCREEN_HEIGHT))
 
+
 def get_font(size):  # Returns Press-Start-2P in the desired size
 	return pygame.font.Font("MainMenu/font.ttf", size)
 
@@ -39,17 +40,24 @@ bg_overlay = pygame.image.load('../graphics/bg/paralax3.png')
 
 font = get_font(16)
 
-ALLOW_FRAME_ADVANCE = True
+ALLOW_FRAME_ADVANCE = False
 # allow the usage of frame advance
 # hint: ' and / are used for frame advance
+
+
 def intro():
+	v_len = int(vid.get_file_data()['frame count'])
 	while True:
 		vid.draw(SCREEN, (0, 0))
 		pygame.display.update()
 		for event in pygame.event.get():
 			if event.type == pygame.MOUSEBUTTONDOWN:
 				vid.close()
-				main_menu()
+				return
+		if vid.frames == v_len - 4:  # dont ask why the `- 4` is there
+			vid.close()
+			return
+
 
 def draw_bg(scroll: float):
 	for j,i in enumerate(bg_images):
@@ -59,6 +67,9 @@ def draw_bg(scroll: float):
 		elif -scroll * (1.5-0.5*j) < 0:
 			SCREEN.blit(i, (-scroll * (1.5-0.5*j) + bg_width, 0))
 	SCREEN.blit(bg_overlay, (0, 0))
+
+
+play_override = False  # allows for forcing the play loop end by injected code (like the editor)
 
 
 def play():
@@ -71,7 +82,7 @@ def play():
 		),
 		Button((SCREEN_WIDTH//2, SCREEN_HEIGHT//2 + 48), "QUIT",  get_font(32), True)
 	]
-	while True:
+	while not play_override:
 		pygame.display.set_caption("GAME")
 
 		SCREEN.fill((0, 0, 0))
@@ -113,10 +124,11 @@ def play():
 			# display some debug info
 			player: Player = level.player.sprite  # type:ignore
 			SCREEN.blit(font.render(
-					f"{player.rect.center} {player.direction}",
+					f"{player.rect.center[0]-level.current_x} {player.rect.center[1]} {player.direction}",
 					True, COLOR1
 				), (0, 0)
 			)
+			print(f"{int(player.rect.center[0]-level.current_x)//TILE_SIZE:X} {int(SCREEN_HEIGHT-player.rect.center[1])//TILE_SIZE:X}")
 			pygame.draw.rect(SCREEN, COLOR1, player.rect, 1)
 			pygame.display.update()
 			while pygame.key.get_pressed()[pygame.K_QUOTE]:
@@ -218,3 +230,4 @@ def main_menu():
 
 if __name__ == "__main__":
 	intro()
+	main_menu()
